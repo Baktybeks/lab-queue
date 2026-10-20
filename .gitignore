@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+
+# Local student roster and credentials
+private/
+.idea/
+.env.*
+!.env.example
+.supabase/
+supabase/.temp/
+supabase/.branches/
