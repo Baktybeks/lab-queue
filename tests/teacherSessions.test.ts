@@ -172,3 +172,33 @@ test('Student can undo extra readiness, including carried extras, without additi
     await actor(3);await assert.rejects(action('return_extra',sid),/Вернуться можно только/);
   } finally {await db.close();}
 });
+
+test('Only the owning teacher can admit one deferred student when the active queue is empty', async () => {
+  const {db,actor,snapshot,action}=await setup();
+  try {
+    await db.query('insert into auth.users(id) values($1),($2)',[id(5),id(6)]);
+    await db.exec('set role authenticated');
+    await actor(1);await action('create_session',null,{date:'2026-10-21',group:'А'});const sid=(await snapshot()).session.id;
+    await actor(3);await action('join',sid,{name:'Готовится',lab:6});let s=await snapshot(sid);const regular=s.entries[0].id;
+    await actor(5);await action('join',sid,{name:'Гость 1',lab:6,off_schedule:true});const guest1=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await actor(6);await action('join',sid,{name:'Гость 2',lab:6,off_schedule:true});const guest2=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await assert.rejects(action('admit_deferred',sid,{entry_id:guest2}),/только преподавателю/);
+    await actor(2);await assert.rejects(action('admit_deferred',sid,{entry_id:guest2}),/другого преподавателя/);
+    await actor(1);await assert.rejects(action('admit_deferred',sid,{entry_id:guest1}),/освобождения очереди/);
+    await action('extra',sid,{current_id:regular});s=await snapshot(sid);
+    assert.equal(s.entries.filter((e:any)=>e.status==='current'||e.status==='waiting').length,0);
+    await action('admit_deferred',sid,{entry_id:guest1});s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.id===guest1).status,'current');
+    assert.equal(s.entries.find((e:any)=>e.id===guest2).status,'deferred');
+    assert.equal(s.entries.find((e:any)=>e.id===regular).status,'extra');
+    assert.equal(s.entries.find((e:any)=>e.id===guest1).extra_count,0);
+    assert.equal(s.entries.find((e:any)=>e.id===guest1).retries,0);
+    await assert.rejects(action('admit_deferred',sid,{entry_id:guest2}),/освобождения очереди/);
+    await action('pass',sid,{current_id:guest1});s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.id===guest2).status,'deferred');
+    await action('admit_deferred',sid,{entry_id:guest2});
+    await actor(3);await action('ready',sid);
+    await actor(1);await action('next',sid,{current_id:guest2});s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.status==='current').id,regular);
+  } finally {await db.close();}
+});
