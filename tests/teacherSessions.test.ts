@@ -111,3 +111,34 @@ test('Extra markers persist, while carried tasks return to FIFO instead of jumpi
     assert.equal(s.results.find((r:any)=>r.id===entry.id).carried_extra,true);
   } finally {await db.close();}
 });
+
+test('Medals count only issued extras; gold requires first success; session end records failure except pending extras', async () => {
+  const {db,actor,snapshot,action}=await setup();
+  try {
+    await db.query('insert into auth.users(id) values($1)',[id(5)]);
+    await db.exec('set role authenticated');
+    await actor(1);await action('create_session',null,{date:'2026-10-21',group:'А'});let sid=(await snapshot()).session.id;
+    await actor(3);await action('join',sid,{name:'Первый раз',lab:6});let entry=(await snapshot(sid)).entries[0];
+    await actor(1);await action('pass',sid,{current_id:entry.id});
+    assert.equal((await snapshot(sid)).results.find((r:any)=>r.id===entry.id).first_try_pass,true);
+    await actor(3);await action('join',sid,{name:'Первый раз',lab:6});entry=(await snapshot(sid)).entries[0];
+    await actor(1);await action('pass',sid,{current_id:entry.id});
+    assert.equal((await snapshot(sid)).results.find((r:any)=>r.id===entry.id).first_try_pass,false);
+    await actor(5);await action('join',sid,{name:'С допами',lab:7});entry=(await snapshot(sid)).entries[0];
+    for(let count=1;count<=2;count++) {
+      await actor(1);await action('extra',sid,{current_id:entry.id});
+      await actor(5);assert.equal((await snapshot(sid)).entries[0].extra_count,count);
+      await action('ready',sid);assert.equal((await snapshot(sid)).entries[0].extra_count,count);
+    }
+    await actor(1);await action('next',sid,{current_id:entry.id});
+    let s=await snapshot(sid);assert.equal(s.entries[0].extra_count,2);assert.equal(s.entries[0].retries,1);
+    await action('extra',sid,{current_id:entry.id});await action('end_session',sid);
+    s=await snapshot();let result=s.results.find((r:any)=>r.id===entry.id);assert.equal(result.outcome,'extra');assert.equal(result.extra_count,3);
+    await action('create_session',null,{date:'2026-10-22',group:'А'});sid=(await snapshot()).session.id;
+    await actor(5);await action('join',sid,{name:'С допами',lab:7});s=await snapshot(sid);entry=s.entries[0];
+    assert.equal(entry.extra_count,3);assert.equal(entry.carried_extra,true);
+    await action('ready',sid);assert.equal((await snapshot(sid)).entries[0].extra_count,3);
+    await actor(1);await action('end_session',sid);result=(await snapshot()).results.find((r:any)=>r.id===entry.id);
+    assert.equal(result.outcome,'failed');assert.equal(result.first_try_pass,false);assert.equal(result.extra_count,3);
+  } finally {await db.close();}
+});

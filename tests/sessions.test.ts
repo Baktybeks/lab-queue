@@ -68,7 +68,7 @@ test('SQL: admin access, repeat counts, archived sessions, and stale clients', a
     assert.equal(state.session,null);
     assert.equal(state.entries.length,0);
     assert.equal(state.results.find((r:any) => r.id === bobId).outcome,'left');
-    assert.equal(state.results.find((r:any) => r.name === 'Карина').outcome,'unfinished');
+    assert.equal(state.results.find((r:any) => r.name === 'Карина').outcome,'failed');
     await action('create_session',{date:'2026-10-22',group:'ИС-2'});
     await actor(alice);
     await assert.rejects(action('join',{name:'Алиса',lab:6,session_id:sid}),/Сессия изменилась/);

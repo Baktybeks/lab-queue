@@ -8,6 +8,7 @@ const labels: Record<string, string> = {
     passed: 'Сдал',
     left: 'Ушёл',
     unfinished: 'Не завершил',
+    failed: 'Не защитил',
     waiting: 'В очереди',
     current: 'Сдаёт',
     extra: 'Доп. задание', deferred: 'Не по графику: ожидает'
@@ -36,7 +37,7 @@ export function Sessions({state, busy, perform}: {
             <h2>Сессия сдачи</h2>
             {state.session ? <><p><strong>{state.session.group}</strong> · {state.session.date}</p><SessionQr
                 session={state.session}/><p>При завершении очередь закроется, все результаты и повторы
-                сохранятся.</p>{ending ? <div className="actions">
+                сохранятся. Оставшиеся в очереди получат 💀 «Не защитил». Допзадания сохранят свой статус.</p>{ending ? <div className="actions">
                 <button disabled={busy} onClick={async () => {
                     await perform('end_session');
                     setEnding(false);
@@ -74,7 +75,7 @@ export function Sessions({state, busy, perform}: {
                     <tr>
                         <th>Студент</th>
                         <th>Лаба</th>
-                        <th>Не ответил</th>
+                        <th>Повторы 🔄</th>
                         <th>Результат</th>
                     </tr>
                     </thead>

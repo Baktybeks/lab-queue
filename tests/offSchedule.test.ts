@@ -18,7 +18,7 @@ test('Off-schedule guests wait through repeated turns, then join FIFO; extras an
     for(let n=1;n<=5;n++) await db.query('insert into auth.users(id) values($1)',[id(n)]);
     await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
     // Reapplying the migration must preserve existing users and work without renaming functions.
-    await db.exec(await readFile(new URL('../supabase/migrations/014_teacher_sessions.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/016_lab_medals.sql',import.meta.url),'utf8'));
     await db.query('insert into queue_private.admins values($1)',[id(1)]);
     await db.exec('set role authenticated');
     await actor(1);await act('create_session',{date:'2026-10-21',group:'ПИ-4-26'});sid=(await snapshot()).session.id;
@@ -52,6 +52,6 @@ test('Off-schedule guests wait through repeated turns, then join FIFO; extras an
     await turn('end_session');s=await snapshot();
     assert.equal(s.entries.length,0);
     assert.equal(s.results.find((r:any)=>r.name==='Гость Б').off_schedule,true);
-    assert.equal(s.results.find((r:any)=>r.name==='Гость Б').outcome,'unfinished');
+    assert.equal(s.results.find((r:any)=>r.name==='Гость Б').outcome,'failed');
   } finally {await db.close();}
 });

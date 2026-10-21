@@ -18,7 +18,7 @@ test('Extra status survives session closure, resumes for same lab, and clears on
       create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('app.uid',true),'')::uuid $$;`);
     await db.query('insert into auth.users(id) values($1),($2)',[admin,student]);
     await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
-    await db.exec(await readFile(new URL('../supabase/migrations/014_teacher_sessions.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/016_lab_medals.sql',import.meta.url),'utf8'));
     await db.query('insert into queue_private.admins values($1)',[admin]);
     await db.exec('set role authenticated');
     await open('2026-10-21');const firstSid=sid;
