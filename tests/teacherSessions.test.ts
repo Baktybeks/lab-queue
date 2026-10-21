@@ -142,3 +142,33 @@ test('Medals count only issued extras; gold requires first success; session end 
     assert.equal(result.outcome,'failed');assert.equal(result.first_try_pass,false);assert.equal(result.extra_count,3);
   } finally {await db.close();}
 });
+
+test('Student can undo extra readiness, including carried extras, without additional medals or retries', async () => {
+  const {db,actor,snapshot,action}=await setup();
+  try {
+    await db.exec('set role authenticated');
+    await actor(1);await action('create_session',null,{date:'2026-10-21',group:'А'});let sid=(await snapshot()).session.id;
+    await actor(3);await action('join',sid,{name:'Студент',lab:6});let entry=(await snapshot(sid)).entries[0];
+    await assert.rejects(action('return_extra',sid),/Вернуться можно только/);
+    await actor(1);await action('extra',sid,{current_id:entry.id});
+    await actor(2);await action('join',sid,{name:'Другой',lab:6});
+    await actor(3);await action('ready',sid);await action('return_extra',sid);
+    let s=await snapshot(sid);entry=s.entries.find((e:any)=>e.mine);
+    assert.equal(entry.status,'extra');assert.equal(entry.extra_count,1);assert.equal(entry.retries,0);
+    await assert.rejects(action('return_extra',sid),/Вернуться можно только/);
+    await actor(2);await assert.rejects(action('return_extra',sid),/Вернуться можно только/);
+    await actor(3);await action('ready',sid);
+    await actor(1);s=await snapshot(sid);await action('next',sid,{current_id:s.entries.find((e:any)=>e.status==='current').id});
+    await actor(3);assert.equal((await snapshot(sid)).entries.find((e:any)=>e.mine).status,'current');
+    await action('return_extra',sid);s=await snapshot(sid);assert.notEqual(s.entries.find((e:any)=>e.status==='current').id,entry.id);
+    await actor(1);await action('end_session',sid);await action('create_session',null,{date:'2026-10-22',group:'А'});sid=(await snapshot()).session.id;
+    await actor(2);await action('join',sid,{name:'Другой',lab:6});
+    await actor(3);await action('join',sid,{name:'Студент',lab:6});await action('ready',sid);await action('return_extra',sid);
+    s=await snapshot(sid);entry=s.entries.find((e:any)=>e.mine);
+    assert.equal(entry.status,'extra');assert.equal(entry.carried_extra,true);assert.equal(entry.extra_count,1);assert.equal(entry.retries,0);
+    await action('ready',sid);s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.mine).ready,false);
+    await actor(1);await action('next',sid,{current_id:s.entries.find((e:any)=>e.status==='current').id});
+    s=await snapshot(sid);await action('next',sid,{current_id:s.entries.find((e:any)=>e.status==='current').id});
+    await actor(3);await assert.rejects(action('return_extra',sid),/Вернуться можно только/);
+  } finally {await db.close();}
+});
