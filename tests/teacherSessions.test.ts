@@ -205,3 +205,28 @@ test('Only the owning teacher can admit one deferred student after the current t
     assert.equal(s.entries.find((e:any)=>e.status==='current').id,regular);
   } finally {await db.close();}
 });
+
+test('Teacher can park and resume students to free admission without altering counters', async () => {
+  const {db,actor,snapshot,action}=await setup();
+  try {
+    await db.query('insert into auth.users(id) values($1),($2)',[id(5),id(6)]);
+    await db.exec('set role authenticated');
+    await actor(1);await action('create_session',null,{date:'2026-10-21',group:'А'});const sid=(await snapshot()).session.id;
+    await actor(3);await action('join',sid,{name:'Текущий',lab:6});const current=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await actor(5);await action('join',sid,{name:'Не готов',lab:6});const waiting=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await actor(6);await action('join',sid,{name:'Не по графику',lab:6,off_schedule:true});const guest=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await assert.rejects(action('pause_waiting',sid),/только преподавателю/);
+    await actor(2);await assert.rejects(action('pause_entry',sid,{entry_id:waiting}),/другого преподавателя/);
+    await actor(1);await action('pause_waiting',sid);let s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.id===current).status,'current');assert.equal(s.entries.find((e:any)=>e.id===waiting).status,'paused');
+    await action('admit_deferred',sid,{entry_id:guest});await action('pause_entry',sid,{entry_id:current});
+    s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,guest);
+    assert.equal(s.entries.find((e:any)=>e.id===current).retries,0);assert.equal(s.entries.find((e:any)=>e.id===current).extra_count,0);
+    await action('resume_entry',sid,{entry_id:waiting});await action('resume_entry',sid,{entry_id:current});s=await snapshot(sid);
+    const ordered=s.entries.filter((e:any)=>e.status==='waiting').sort((a:any,b:any)=>a.position-b.position);
+    assert.deepEqual(ordered.map((e:any)=>e.id),[waiting,current]);assert.equal(ordered[1].priority,false);
+    await assert.rejects(action('resume_entry',sid,{entry_id:current}),/больше не находится/);
+    await action('pause_entry',sid,{entry_id:waiting});await action('end_session',sid);s=await snapshot();
+    assert.equal(s.results.find((r:any)=>r.id===waiting).outcome,'failed');assert.equal(s.results.find((r:any)=>r.id===waiting).retries,0);
+  } finally {await db.close();}
+});

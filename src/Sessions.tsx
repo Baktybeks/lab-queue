@@ -10,6 +10,7 @@ const labels: Record<string, string> = {
     unfinished: 'Не завершил',
     failed: 'Не защитил',
     waiting: 'В очереди',
+    paused: 'В ожидании',
     current: 'Сдаёт',
     extra: 'Доп. задание', deferred: 'Не по графику: ожидает'
 };
