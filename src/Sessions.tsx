@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import type {State} from './queue';
 import {SessionQr} from './SessionQr';
+import {ExtraBadge} from './ExtraBadge';
 import {sessionCaption, newestSessions} from './sessionCaption';
 
 const labels: Record<string, string> = {
@@ -81,7 +82,7 @@ export function Sessions({state, busy, perform}: {
                         <td>{r.name}{r.off_schedule && <small> · Не по графику</small>}</td>
                         <td>№ {r.lab}</td>
                         <td>{r.retries}</td>
-                        <td>{labels[r.outcome] || r.outcome}</td>
+                        <td>{labels[r.outcome] || r.outcome}<ExtraBadge entry={r}/></td>
                     </tr>)}</tbody>
                 </table>
             </div> : <p>В этой сессии пока нет записей.</p>}
