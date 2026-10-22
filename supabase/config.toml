@@ -1,3 +1,7 @@
 [functions.create-teacher]
 # ES256 access tokens are verified by auth.getUser inside the function.
 verify_jwt = false
+
+[functions.create-student]
+# The function verifies the access token and superadmin role before using Admin Auth.
+verify_jwt = false
