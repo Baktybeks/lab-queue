@@ -1,7 +1,7 @@
 import type {State, Entry} from './queue';
 
 export function Sidebar({admin}: {admin: boolean}) {
-  return <nav className="sidebar" aria-label="Навигация"><a className="sidebar-brand" href="#"><span>◈</span><div><strong>Лаба</strong><small>Очередь на защиту<br/>лабораторных работ</small></div></a><div className="sidebar-links"><a href="#queue"><span>◷</span>{admin ? 'Управление очередью' : 'Моя очередь'}</a><a href="#registration"><span>▤</span>{admin ? 'Настройки сдачи' : 'Запись на защиту'}</a>{admin && <a href="#sessions"><span>▦</span>Сессии и история</a>}<a href="#guide"><span>ⓘ</span>Как это работает</a></div><div className="sidebar-bottom"><span>✧</span><strong>Всё получится.</strong><p>Готовь отчёт.<br/>Остальное — по порядку.</p></div></nav>;
+  return <nav className="sidebar" aria-label="Навигация"><a className="sidebar-brand" href="#"><span>◈</span><div><strong>Лаба</strong><small>Очередь на защиту<br/>лабораторных работ</small></div></a><div className="sidebar-links"><a href="#queue"><span>◷</span>{admin ? 'Управление очередью' : 'Моя очередь'}</a><a href="#registration"><span>▤</span>{admin ? 'Настройки сдачи' : 'Запись на защиту'}</a>{admin ? <a href="#sessions"><span>▦</span>Сессии и история</a> : <a href="#my-history"><span>▦</span>Моя история</a>}<a href="#guide"><span>ⓘ</span>Как это работает</a></div><div className="sidebar-bottom"><span>✧</span><strong>Всё получится.</strong><p>Готовь отчёт.<br/>Остальное — по порядку.</p></div></nav>;
 }
 
 export function StudentOverview({mine, ahead}: {mine?: Entry; ahead: number}) {

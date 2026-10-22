@@ -9,6 +9,7 @@ import { profileName } from './profileName';
 import { Header } from './Header';
 import { Teachers } from './Teachers';
 import { Students } from './Students';
+import { StudentHistory } from './StudentHistory';
 import { ExtraBadge } from './ExtraBadge';
 import { MedalLegend } from './MedalLegend';
 import { Sidebar, StudentOverview, SessionSummary } from './Dashboard';
@@ -174,6 +175,7 @@ function App() {
       <div className="section-title"><h2>На доп. задании <span>{extras.length}</span></h2></div><div className="card">{extras.length ? extras.map(e => <div className="row" key={e.id}><span className="extra-icon">↻</span><div className="person"><strong>{e.name}</strong><span>Лабораторная № {e.lab}</span><ExtraBadge entry={e}/></div><span className="plain-status">Готовится</span></div>) : <div className="empty compact">Сейчас никто не выполняет доп. задание</div>}</div>
       {paused.length > 0 && <><div className="section-title"><h2>В ожидании <span>{paused.length}</span></h2></div><div className="card">{paused.map(e => <div className="row" key={e.id}><div className="person"><strong>{e.name}</strong><span>Лабораторная № {e.lab}</span><ExtraBadge entry={e}/></div>{adminView && isAdmin ? <button className="secondary compact-button" disabled={busy} onClick={() => perform('resume_entry',{entry_id:e.id})}>Вернуть в очередь →</button> : <span className="badge">Ожидает возврата</span>}</div>)}</div></>}
       {deferred.length > 0 && <><div className="section-title"><h2>Не по графику <span>{deferred.length}</span></h2></div><div className="card">{deferred.map(e => <div className="row" key={e.id}><div className="person"><strong>{e.name}</strong><span>Лабораторная № {e.lab}</span><ExtraBadge entry={e}/></div><span className="badge">Ожидает допуска</span>{adminView && isAdmin && <button className="secondary admit-student" disabled={busy || waiting.length > 0} title={waiting.length ? 'Сначала дождитесь освобождения списка ожидающих' : current ? 'Вызвать следующим после текущего студента' : 'Вызвать этого студента'} onClick={() => perform('admit_deferred',{entry_id:e.id})}>Вызвать в очередь →</button>}</div>)}</div></>}
+      {remote && !isAdmin && <StudentHistory client={remote} revision={JSON.stringify([state.session?.id,state.entries.map(e=>[e.id,e.status,e.retries,e.extra_count])])}/>}
       {adminView && isAdmin && <Sessions state={state} busy={busy} perform={perform}/> }
       {remote && state.superadmin && <><Teachers client={remote}/><Students client={remote}/></>}
     </section><aside id="registration"><SessionSummary state={state}/>
