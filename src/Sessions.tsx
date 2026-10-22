@@ -33,7 +33,7 @@ export function Sessions({state, busy, perform}: {
     const selectedId = sessions.some(s => s.id === selected) ? selected : state.session?.id || sessions[0]?.id;
     const selectedSession = sessions.find(s => s.id === selectedId);
     const results = (state.results || []).filter(r => r.session_id === selectedId);
-    return <section className="sessions">
+    return <section className="sessions" id="sessions">
         <div className="card form-card">
             <h2>Сессия сдачи</h2>
             {state.session ? <><p><strong>{state.session.group}</strong> · {state.session.date}</p><SessionQr
