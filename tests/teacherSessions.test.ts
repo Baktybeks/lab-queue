@@ -230,3 +230,32 @@ test('Teacher can park and resume students to free admission without altering co
     assert.equal(s.results.find((r:any)=>r.id===waiting).outcome,'failed');assert.equal(s.results.find((r:any)=>r.id===waiting).retries,0);
   } finally {await db.close();}
 });
+
+test('An empty queue automatically calls only one off-schedule student and leaves extra/paused students untouched', async () => {
+  const {db,actor,snapshot,action}=await setup();
+  try {
+    await db.query('insert into auth.users(id) values($1),($2)',[id(5),id(6)]);
+    await db.exec('set role authenticated');
+    await actor(1);await action('create_session',null,{date:'2026-10-22',group:'А'});const sid=(await snapshot()).session.id;
+    await actor(3);await action('join',sid,{name:'Основной',lab:6});const main=(await snapshot(sid)).entries[0].id;
+    await actor(5);await action('join',sid,{name:'Гость первый',lab:6,off_schedule:true});const guest1=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await actor(6);await action('join',sid,{name:'Гость второй',lab:6,off_schedule:true});const guest2=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+    await actor(1);await action('extra',sid,{current_id:main});let s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.status==='current').id,guest1);
+    assert.equal(s.entries.find((e:any)=>e.id===guest2).status,'deferred');
+    assert.equal(s.entries.find((e:any)=>e.id===main).status,'extra');
+    assert.equal(s.entries.find((e:any)=>e.id===guest1).retries,0);assert.equal(s.entries.find((e:any)=>e.id===guest1).extra_count,0);
+    await action('pause_entry',sid,{entry_id:guest1});s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.status==='current').id,guest2);assert.equal(s.entries.find((e:any)=>e.id===guest1).status,'paused');
+    await action('pass',sid,{current_id:guest2});s=await snapshot(sid);
+    assert.equal(s.entries.some((e:any)=>e.status==='current'),false);
+    await actor(5);await action('leave',sid);await action('join',sid,{name:'Гость первый',lab:6,off_schedule:true});s=await snapshot(sid);
+    assert.equal(s.entries.find((e:any)=>e.status==='current').name,'Гость первый');
+    await db.exec('reset role');
+    // Reproduce an already-empty session from the old implementation and reconcile on upgrade.
+    await db.query("update queue_private.entries set status='deferred' where session_id=$1 and status='current'",[sid]);
+    await db.exec(await readFile(new URL('../supabase/migrations/021_auto_call_off_schedule.sql',import.meta.url),'utf8'));
+    await actor(1);s=await snapshot(sid);assert.equal(s.entries.filter((e:any)=>e.status==='current').length,1);
+    assert.equal(s.results.find((r:any)=>r.id===s.entries.find((e:any)=>e.status==='current').id).outcome,'current');
+  } finally {await db.close();}
+});
