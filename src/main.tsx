@@ -6,6 +6,7 @@ import './style.css';
 import { Sessions } from './Sessions';
 import { AuthPanel } from './AuthPanel';
 import { profileName } from './profileName';
+import { shouldResetAccount } from './authTransition';
 import { Header } from './Header';
 import { Teachers } from './Teachers';
 import { Students } from './Students';
@@ -15,7 +16,7 @@ import { MedalLegend } from './MedalLegend';
 import { Sidebar, StudentOverview, SessionSummary } from './Dashboard';
 
 const env = (import.meta as unknown as { env: Record<string,string> }).env;
-const remote = env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY) : null;
+const remote = env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
 const demoKey = 'lab-queue-demo-v1';
 const empty: State = { lab: 6, entries: [], admin: false };
 function readDemo(): State { try { return JSON.parse(localStorage.getItem(demoKey) || 'null') || structuredClone(empty); } catch { return structuredClone(empty); } }
@@ -24,6 +25,7 @@ function App() {
   const [state,setState] = useState<State>(remote ? empty : readDemo);
   const adminView = Boolean(remote && state.admin);
   const authGeneration = useRef(0);
+  const authUserId = useRef<string|null>(null);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState('');
   const [notice,setNotice] = useState('');
@@ -50,8 +52,9 @@ function App() {
     if (generation !== authGeneration.current) return;
     if (auth.error) throw auth.error;
     if (!auth.data.session || auth.data.session.user.is_anonymous) {
-      setSignedIn(false); setAuthReady(true); setState(structuredClone(empty)); return;
+      authUserId.current=null; setSignedIn(false); setAuthReady(true); setState(structuredClone(empty)); return;
     }
+    authUserId.current=auth.data.session.user.id;
     const {data,error} = await remote.rpc('queue_snapshot_for_session',{target_session_id:selectedSessionRef.current});
     if (generation !== authGeneration.current) return;
     if (error) { setConnected(false); throw error; }
@@ -68,8 +71,9 @@ function App() {
       finally { refreshing = false; }
     };
     update();
-    const authChange = remote?.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+    const authChange = remote?.auth.onAuthStateChange((event,session) => {
+      if (shouldResetAccount(event,authUserId.current,session?.user.id ?? null)) {
+        authUserId.current=session?.user.id ?? null;
         authGeneration.current++;
         setState(structuredClone(empty)); setSignedIn(false); setAuthReady(event === 'SIGNED_OUT');
       }

@@ -8,7 +8,7 @@ export function Teachers({client}: {client: SupabaseClient}) {
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState('');
   const [message,setMessage] = useState('');
-  return <section className="card form-card teacher-form"><h2>Создать преподавателя</h2><p>Доступно только superadmin. Новый аккаунт сможет управлять сдачей, но не удалять сессии.</p>
+  return <details className="card form-card teacher-form admin-accordion"><summary>Создать преподавателя</summary><div className="accordion-content"><p>Доступно только superadmin. Новый аккаунт сможет управлять сдачей, но не удалять сессии.</p>
     <form onSubmit={async e => {
       e.preventDefault();setBusy(true);setError('');setMessage('');
       try {
@@ -29,5 +29,5 @@ export function Teachers({client}: {client: SupabaseClient}) {
       <label htmlFor="teacher-password">Пароль для нового аккаунта</label><input id="teacher-password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)}/>
       {error && <div className="error" role="alert">{error}</div>}{message && <p role="status">{message}</p>}
       <button disabled={busy}>{busy ? 'Создаём…' : 'Создать преподавателя'}</button>
-    </form></section>;
+    </form></div></details>;
 }

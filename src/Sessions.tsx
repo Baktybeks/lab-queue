@@ -58,7 +58,7 @@ export function Sessions({state, busy, perform}: {
                 <button className="session-submit" disabled={busy || !group.trim()}>Создать сессию</button>
             </form>}
         </div>
-        <div className="section-title"><h2>История сдачи</h2></div>
+        <details className="card form-card admin-accordion session-history"><summary>История сдачи</summary>
         <div className="card form-card"><label htmlFor="history-session">Сессия</label><select id="history-session"
                                                                                                value={selectedId || ''}
                                                                                                onChange={e => setSelected(e.target.value)}>{!sessions.length &&
@@ -88,6 +88,6 @@ export function Sessions({state, busy, perform}: {
                     </tr>)}</tbody>
                 </table>
             </div> : <p>В этой сессии пока нет записей.</p>}
-        </div>
+        </div></details>
     </section>;
 }
