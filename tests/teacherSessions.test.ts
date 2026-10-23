@@ -259,3 +259,22 @@ test('An empty queue automatically calls only one off-schedule student and leave
     assert.equal(s.results.find((r:any)=>r.id===s.entries.find((e:any)=>e.status==='current').id).outcome,'current');
   } finally {await db.close();}
 });
+
+test('Teacher restores old extra assignments from any queue status without priority or duplicate medals',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ for(const n of [5,6,7])await db.query('insert into auth.users(id) values($1)',[id(n)]);
+ await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-23',group:'Legacy'});const sid=(await snapshot()).session.id;
+ await actor(3);await action('join',sid,{name:'Current',lab:6});const current=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+ const entries:any={};for(const n of [5,6,7]){await actor(n);await action('join',sid,{name:`Student ${n}`,lab:6,off_schedule:n===6});entries[n]=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;}
+ await assert.rejects(action('restore_extra',sid,{entry_id:entries[6]}),/преподавателю/);
+ await actor(2);await assert.rejects(action('restore_extra',sid,{entry_id:entries[6]}),/другого преподавателя/);
+ await actor(1);await action('pause_entry',sid,{entry_id:entries[7]});
+ for(const n of [5,6,7]){await action('restore_extra',sid,{entry_id:entries[n]});const e=(await snapshot(sid)).entries.find((e:any)=>e.id===entries[n]);assert.equal(e.status,'extra');assert.equal(e.carried_extra,true);assert.equal(e.extra_count,1);assert.equal(e.retries,0);await assert.rejects(action('restore_extra',sid,{entry_id:entries[n]}),/больше не находится/);}
+ assert.equal((await snapshot(sid)).entries.find((e:any)=>e.status==='current').id,current);
+ await actor(5);await action('ready',sid);let s=await snapshot(sid);let e=s.entries.find((e:any)=>e.mine);assert.equal(e.status,'waiting');assert.equal(e.ready,false);assert.equal(e.priority,false);assert.equal(e.extra_count,1);
+ await actor(1);await action('restore_extra',sid,{entry_id:current});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===current).status,'extra');assert.equal(s.entries.find((e:any)=>e.status==='current').id,entries[5]);
+ await action('end_session',sid);await action('create_session',null,{date:'2026-10-24',group:'Next'});const nextSid=(await snapshot()).session.id;
+ await actor(6);await action('join',nextSid,{name:'Student 6',lab:6});e=(await snapshot(nextSid)).entries.find((e:any)=>e.mine);assert.equal(e.status,'extra');assert.equal(e.carried_extra,true);assert.equal(e.extra_count,1);
+ }finally{await db.close();}
+});
