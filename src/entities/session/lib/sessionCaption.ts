@@ -1,4 +1,4 @@
-import type { LabSession } from './queue';
+import type { LabSession } from '../../queue/model/queue';
 
 function timestamp(session: LabSession) {
   for (const value of [session.created_at,session.ended_at]) {

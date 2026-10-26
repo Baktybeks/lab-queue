@@ -1,8 +1,8 @@
 import {useState} from 'react';
-import type {State} from './queue';
-import {SessionQr} from './SessionQr';
-import {ExtraBadge} from './ExtraBadge';
-import {sessionCaption, newestSessions} from './sessionCaption';
+import type {State} from '../../../entities/queue/model/queue';
+import {SessionQr} from '../../../entities/session/ui/SessionQr';
+import {ExtraBadge} from '../../../entities/queue/ui/ExtraBadge';
+import {sessionCaption, newestSessions} from '../../../entities/session/lib/sessionCaption';
 
 const labels: Record<string, string> = {
     passed: 'Сдал',

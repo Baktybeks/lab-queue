@@ -1,18 +1,20 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useState} from 'react';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {queryKeys} from '../../../shared/api/queryKeys';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import type {Result,LabSession} from './queue';
-import {ExtraBadge} from './ExtraBadge';
-import {sessionCaption} from './sessionCaption';
+import {studentHistoryOptions} from '../../../entities/student-history/api/history';
+import {ExtraBadge} from '../../../entities/queue/ui/ExtraBadge';
+import {sessionCaption} from '../../../entities/session/lib/sessionCaption';
 
-type HistoryRow=Result & {session:LabSession};
 const labels:Record<string,string>={passed:'Сдал',failed:'Не защитил',unfinished:'Не завершил',left:'Ушёл из очереди',waiting:'В очереди',current:'Сейчас сдаёшь',extra:'На допзадании',deferred:'Ожидаешь допуска',paused:'В ожидании'};
 
-export function StudentHistory({client,revision}:{client:SupabaseClient;revision:string}) {
-  const [rows,setRows]=useState<HistoryRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+export function StudentHistory({client,userId,revision}:{client:SupabaseClient;userId:string;revision:string}) {
+  const cache=useQueryClient();
+  const query=useQuery(studentHistoryOptions(client,userId));
+  const rows=query.data||[],loading=query.isFetching,error=query.error?.message||'';
+  const load=()=>query.refetch();
   const [lab,setLab]=useState(''),[teacher,setTeacher]=useState(''),[outcome,setOutcome]=useState('');
-  const request=useRef(0);
-  async function load(){const generation=++request.current;setLoading(true);try{const {data,error}=await client.rpc('queue_my_history');if(error)throw new Error(error.message);if(generation===request.current){setRows(data||[]);setError('');}}catch(e){if(generation===request.current)setError(e instanceof Error?e.message:'Не удалось загрузить историю');}finally{if(generation===request.current)setLoading(false);}}
-  useEffect(()=>{load();return()=>{request.current++;};},[client,revision]);
+  useEffect(()=>{cache.invalidateQueries({queryKey:queryKeys.history(userId)});},[cache,userId,revision]);
   const teachers=[...new Set(rows.map(r=>r.session.teacher_name||'Преподаватель'))].sort();
   const filtered=rows.filter(r=>(!lab||String(r.lab)===lab)&&(!teacher||r.session.teacher_name===teacher)&&(!outcome||r.outcome===outcome));
   return <details className="card form-card student-history admin-accordion" id="my-history"><summary>Моя история сдачи</summary><div className="accordion-content"><div className="section-title"><span>Личная история</span><button className="ghost compact-button" disabled={loading} onClick={load}>{loading?'Загружаем…':'Обновить'}</button></div><p>Твои записи у всех преподавателей, включая прошлые сессии. Самые новые — сверху.</p>

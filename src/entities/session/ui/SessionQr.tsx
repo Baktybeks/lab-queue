@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import type { LabSession } from './queue';
-import { sessionLink } from './sessionLink';
+import type { LabSession } from '../../queue/model/queue';
+import { sessionLink } from '../lib/sessionLink';
 
 export function SessionQr({session}: {session: LabSession}) {
   const url = sessionLink(location.href, session.id);

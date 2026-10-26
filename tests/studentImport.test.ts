@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseStudentImport} from '../src/parseStudentBatch.ts';
-import {shouldResetAccount} from '../src/authTransition.ts';
+import {parseStudentImport} from '../src/features/manage-students/lib/parseStudentBatch.ts';
+import {shouldResetAccount} from '../src/features/auth/model/authTransition.ts';
 
 test('JSON import validates the whole batch and resolves individual or common passwords',()=>{
   const rows=parseStudentImport(JSON.stringify([{name:'  Student One  ',login:' ONE_A '},{name:'Student Two',login:'two_b',password:'Individual123'}]),'Common123');

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { insert, ordered, promote, type Entry } from '../src/queue.ts';
+import { insert, ordered, promote, type Entry } from '../src/entities/queue/model/queue.ts';
 function entry(id: string, priority = false, ready = false): Entry { return {id,name:id,lab:6,status:'waiting',priority,ready,position:0}; }
 test('Priority is FIFO, does not interrupt current, normal registrations append', () => {
   let entries = promote(insert([],entry('current')));

@@ -1,6 +1,6 @@
 import {useRef,useState} from 'react';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import {parseStudentImport} from './parseStudentBatch';
+import {parseStudentImport} from '../lib/parseStudentBatch';
 
 const example='[\n  {"name": "Асанов Бек Русланович", "login": "asanov_b_r"},\n  {"name": "Иванов Иван Иванович", "login": "ivanov_i_i", "password": "Student2026!"}\n]';
 export function StudentImport({client,onImported}:{client:SupabaseClient;onImported:()=>Promise<void>}){

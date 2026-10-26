@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loginEmail } from '../src/loginEmail.ts';
+import { loginEmail } from '../src/features/auth/lib/loginEmail.ts';
 import { accountAttributes, provisionStudents } from '../scripts/student-accounts.mjs';
 
 test('Student login matches provisioned address; existing admin email still works', () => {

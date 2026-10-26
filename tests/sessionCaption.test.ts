@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sessionCaption, newestSessions } from '../src/sessionCaption.ts';
+import { sessionCaption, newestSessions } from '../src/entities/session/lib/sessionCaption.ts';
 const session = {id:'12345678-1234-1234-1234-123456789012',date:'2026-10-21',group:'Пи-4-26',ended_at:null,created_at:'2026-10-21T03:04:05Z'};
 test('Session creation time is converted to the teacher browser timezone', () => {
   assert.match(sessionCaption(session,'Asia/Bishkek'),/09:04:05/);

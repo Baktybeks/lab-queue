@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { authError } from './authError';
-import { loginEmail } from './loginEmail';
+import { authError } from '../lib/authError';
+import { loginEmail } from '../lib/loginEmail';
 
 export function AuthPanel({client,onLogin}: {client: SupabaseClient; onLogin: () => Promise<void>}) {
   const [login,setLogin] = useState('');
