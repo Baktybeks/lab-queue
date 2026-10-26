@@ -1,3 +1,6 @@
+import type {SupabaseClient} from '@supabase/supabase-js';
+import {useQuery} from '@tanstack/react-query';
+import {historySessionsOptions,sessionResultsOptions} from '../../../entities/session/api/history';
 import {useState} from 'react';
 import type {State} from '../../../entities/queue/model/queue';
 import {SessionQr} from '../../../entities/session/ui/SessionQr';
@@ -15,7 +18,9 @@ const labels: Record<string, string> = {
     extra: 'Доп. задание', deferred: 'Не по графику: ожидает'
 };
 
-export function Sessions({state, busy, perform}: {
+export function Sessions({client,userId,state, busy, perform}: {
+    client:SupabaseClient;
+    userId:string;
     state: State;
     busy: boolean;
     perform: (action: string, args?: Record<string, unknown>) => Promise<void>
@@ -29,10 +34,14 @@ export function Sessions({state, busy, perform}: {
     const [group, setGroup] = useState('');
     const [selected, setSelected] = useState('');
     const [ending, setEnding] = useState(false);
-    const sessions = newestSessions(state.sessions || []);
-    const selectedId = sessions.some(s => s.id === selected) ? selected : state.session?.id || sessions[0]?.id;
+    const [historyOpen,setHistoryOpen]=useState(false);
+    const sessionQuery=useQuery(historySessionsOptions(client,userId,historyOpen));
+    const sessions = newestSessions(sessionQuery.data || []);
+    const selectedId = sessions.some(s => s.id === selected) ? selected : sessions.find(s=>s.id===state.session?.id)?.id || sessions[0]?.id;
     const selectedSession = sessions.find(s => s.id === selectedId);
-    const results = (state.results || []).filter(r => r.session_id === selectedId);
+    const resultQuery=useQuery(sessionResultsOptions(client,userId,selectedId||null,historyOpen));
+    const results=resultQuery.data||[];
+    const historyError=sessionQuery.error?.message||resultQuery.error?.message;
     return <section className="sessions" id="sessions">
         <div className="card form-card">
             <h2>Сессия сдачи</h2>
@@ -58,8 +67,8 @@ export function Sessions({state, busy, perform}: {
                 <button className="session-submit" disabled={busy || !group.trim()}>Создать сессию</button>
             </form>}
         </div>
-        <details className="card form-card admin-accordion session-history"><summary>История сдачи</summary>
-        <div className="card form-card"><label htmlFor="history-session">Сессия</label><select id="history-session"
+        <details className="card form-card admin-accordion session-history" onToggle={e=>setHistoryOpen(e.currentTarget.open)}><summary>История сдачи</summary>
+        <div className="card form-card"><button className="ghost compact-button" disabled={sessionQuery.isFetching||resultQuery.isFetching} onClick={async()=>{await sessionQuery.refetch();if(selectedId)await resultQuery.refetch();}}>Обновить историю</button>{historyError&&<div className="error" role="alert">{historyError}</div>}<label htmlFor="history-session">Сессия</label><select id="history-session"
                                                                                                value={selectedId || ''}
                                                                                                onChange={e => setSelected(e.target.value)}>{!sessions.length &&
             <option value="">Нет сессий</option>}{sessions.map(s => <option key={s.id}
@@ -70,7 +79,7 @@ export function Sessions({state, busy, perform}: {
                 perform('delete_session', {target_session_id: selectedSession.id});
             }}>Удалить сессию</button>}
             {state.superadmin && selectedSession && !selectedSession.ended_at && <p className="hint">Для удаления сначала завершите сессию.</p>}
-            {results.length ? <div className="results-scroll">
+            {sessionQuery.isLoading||resultQuery.isLoading ? <p role="status">Загружаем историю…</p> : results.length ? <div className="results-scroll">
                 <table>
                     <thead>
                     <tr>

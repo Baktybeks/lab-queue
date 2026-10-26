@@ -10,14 +10,15 @@ const labels:Record<string,string>={passed:'Сдал',failed:'Не защити�
 
 export function StudentHistory({client,userId,revision}:{client:SupabaseClient;userId:string;revision:string}) {
   const cache=useQueryClient();
-  const query=useQuery(studentHistoryOptions(client,userId));
+  const [open,setOpen]=useState(false);
+  const query=useQuery({...studentHistoryOptions(client,userId),enabled:open});
   const rows=query.data||[],loading=query.isFetching,error=query.error?.message||'';
   const load=()=>query.refetch();
   const [lab,setLab]=useState(''),[teacher,setTeacher]=useState(''),[outcome,setOutcome]=useState('');
   useEffect(()=>{cache.invalidateQueries({queryKey:queryKeys.history(userId)});},[cache,userId,revision]);
   const teachers=[...new Set(rows.map(r=>r.session.teacher_name||'Преподаватель'))].sort();
   const filtered=rows.filter(r=>(!lab||String(r.lab)===lab)&&(!teacher||r.session.teacher_name===teacher)&&(!outcome||r.outcome===outcome));
-  return <details className="card form-card student-history admin-accordion" id="my-history"><summary>Моя история сдачи</summary><div className="accordion-content"><div className="section-title"><span>Личная история</span><button className="ghost compact-button" disabled={loading} onClick={load}>{loading?'Загружаем…':'Обновить'}</button></div><p>Твои записи у всех преподавателей, включая прошлые сессии. Самые новые — сверху.</p>
+  return <details className="card form-card student-history admin-accordion" id="my-history" onToggle={e=>setOpen(e.currentTarget.open)}><summary>Моя история сдачи</summary><div className="accordion-content"><div className="section-title"><span>Личная история</span><button className="ghost compact-button" disabled={loading} onClick={load}>{loading?'Загружаем…':'Обновить'}</button></div><p>Твои записи у всех преподавателей, включая прошлые сессии. Самые новые — сверху.</p>
     <div className="history-stats"><div><strong>{rows.filter(r=>r.outcome==='passed').length}</strong><span>успешных сдач</span></div><div><strong>{rows.filter(r=>r.first_try_pass).length}</strong><span>с первой попытки 🥇</span></div><div><strong>{rows.length}</strong><span>записей в истории</span></div></div>
     <div className="history-filters"><label>Лабораторная<select value={lab} onChange={e=>setLab(e.target.value)}><option value="">Все работы</option>{[...new Set(rows.map(r=>r.lab))].sort((a,b)=>a-b).map(n=><option key={n} value={n}>№ {n}</option>)}</select></label><label>Преподаватель<select value={teacher} onChange={e=>setTeacher(e.target.value)}><option value="">Все преподаватели</option>{teachers.map(t=><option key={t}>{t}</option>)}</select></label><label>Результат<select value={outcome} onChange={e=>setOutcome(e.target.value)}><option value="">Все результаты</option>{Object.entries(labels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label></div>
     {error&&<div className="error" role="alert">Не удалось загрузить историю: {error}</div>}

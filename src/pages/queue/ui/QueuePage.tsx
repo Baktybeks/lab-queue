@@ -33,7 +33,7 @@ export function QueuePage(){
     <div className={"layout " + (!isAdmin ? "student-layout" : "")} id="queue"><section className="queue-column" id="queue-list">
       <QueueBoard {...{current,waiting,extras,paused,deferred,adminView,isAdmin,busy,perform,restoreExtra,readyExtraButton}}/>
       {remote && !isAdmin && <StudentHistory client={remote} userId={userId} revision={JSON.stringify([state.session?.id,state.entries.map(e=>[e.id,e.status,e.retries,e.extra_count])])}/>}
-      {adminView && isAdmin && <Sessions state={state} busy={busy} perform={perform}/> }
+      {adminView && isAdmin && <Sessions client={remote!} userId={userId} state={state} busy={busy} perform={perform}/> }
       {remote && state.superadmin && <><Teachers client={remote}/><Students client={remote} userId={userId}/></>}
     </section><aside id="registration"><SessionSummary state={state}/>
       <div className="lab-note"><span>АКТУАЛЬНАЯ РАБОТА</span><div>Лабораторная <strong>№ {state.lab}</strong></div><p>Приоритет при первой записи.<br/>После пропуска — в конец очереди.</p></div>

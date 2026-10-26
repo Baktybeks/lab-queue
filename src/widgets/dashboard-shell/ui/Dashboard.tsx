@@ -11,6 +11,6 @@ export function StudentOverview({mine, ahead}: {mine?: Entry; ahead: number}) {
 }
 
 export function SessionSummary({state}: {state: State}) {
-  const passed=(state.results || []).filter(r=>r.session_id===state.session?.id && r.outcome==='passed').length;
+  const passed=state.passed_count??0;
   return <><section className="card form-card session-summary"><h2>Текущая сессия</h2><div className="session-summary-name"><strong>{state.session?.group || 'Сессия не выбрана'}</strong><span>{state.session?.date || 'Выбери преподавателя для записи'}</span></div><dl><dt>Преподаватель</dt><dd>{state.session?.teacher_name || '—'}</dd></dl></section><section className="card form-card session-stats"><h2>Сейчас в сессии</h2><div className="stats-grid"><div><span>В очереди</span><strong>{state.entries.filter(e=>['current','waiting'].includes(e.status)).length}</strong></div><div><span>На допзадании</span><strong>{state.entries.filter(e=>e.status==='extra').length}</strong></div><div><span>Не по графику</span><strong>{state.entries.filter(e=>e.status==='deferred').length}</strong></div><div><span>{state.admin ? 'Сдали' : 'В ожидании'}</span><strong>{state.admin ? passed : state.entries.filter(e=>e.status==='paused').length}</strong></div></div></section></>;
 }

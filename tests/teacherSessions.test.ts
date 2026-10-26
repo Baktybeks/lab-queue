@@ -308,3 +308,25 @@ test('Teacher admits completed legacy extras ahead of normal queue with FIFO and
  await actor(1);await action('pass',sid,{current_id:guests[6]});await action('pause_entry',sid,{entry_id:current});await action('admit_ready_extra',sid,{entry_id:guests[5]});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,guests[5]);assert.equal(s.entries.find((e:any)=>e.id===guests[5]).extra_count,1);
  }finally{await db.close();}
 });
+
+test('Light queue excludes archives; on-demand results are scoped to one authorized session',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ await db.exec('set role authenticated');
+ await actor(1);await action('create_session',null,{date:'2026-10-26',group:'A'});const a=(await snapshot()).session.id;
+ await actor(2);await action('create_session',null,{date:'2026-10-26',group:'B'});const b=(await snapshot()).session.id;
+ await actor(3);await action('join',a,{name:'Student A',lab:6});const student=(await snapshot(a)).entries.find((e:any)=>e.mine).id;
+ const live=async(sid:string|null)=>(await db.query<{value:any}>('select public.queue_live_snapshot($1) as value',[sid])).rows[0].value;
+ const list=async()=>(await db.query<{value:any}>('select public.queue_history_sessions() as value')).rows[0].value;
+ const results=async(sid:string)=>(await db.query<{value:any}>('select public.queue_session_results($1) as value',[sid])).rows[0].value;
+ await assert.rejects(list(),/преподавателю/);await assert.rejects(results(a),/преподавателю/);
+ await actor(1);let s=await live(null);assert.equal(s.session.id,a);assert.equal(s.entries[0].id,student);assert.equal('results' in s,false);assert.equal('sessions' in s,false);assert.equal(s.passed_count,0);assert.equal((await list()).length,1);assert.equal((await results(a)).length,1);
+ await assert.rejects(results(b),/другого преподавателя/);await assert.rejects(live(b),/другого преподавателя/);
+ await action('pass',a,{current_id:student});s=await live(null);assert.equal(s.passed_count,1);assert.equal(s.entries.length,0);assert.equal('results' in s,false);
+ await action('end_session',a);assert.equal((await results(a))[0].outcome,'passed');assert.equal((await live(null)).session,null);
+ await actor(2);assert.equal((await results(b)).length,0);await assert.rejects(results(a),/другого преподавателя/);
+ await actor(4);assert.equal((await list()).length,2);assert.equal((await results(a))[0].name,'Student A');assert.deepEqual(await results(b),[]);await assert.rejects(results(id(99)),/не найдена/);
+ await db.query("select set_config('app.uid','',false)");await assert.rejects(list(),/преподавателю/);await assert.rejects(live(null),/Войдите/);
+ await db.exec('set role anon');await assert.rejects(list(),/permission denied/);await assert.rejects(results(a),/permission denied/);await assert.rejects(live(null),/permission denied/);
+ }finally{await db.close();}
+});

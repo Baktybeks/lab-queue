@@ -9,10 +9,12 @@ export function useQueueAction(){
       ? await supabase.rpc('queue_delete_session',{target_session_id:payload.target_session_id})
       : await supabase.rpc('queue_action',{action,payload});
     if(error)throw new Error(error.message);
-  },onSuccess:async()=>{
+  },onSuccess:async(_data,command)=>{
     await Promise.all([
       cache.invalidateQueries({queryKey:['queue']}),
       cache.invalidateQueries({queryKey:['student-history']}),
+      cache.invalidateQueries({queryKey:['teacher-sessions'],refetchType:['create_session','end_session','delete_session'].includes(command.action)?'active':'none'}),
+      cache.invalidateQueries({queryKey:['teacher-results'],predicate:query=>query.queryKey[2]===(command.payload.target_session_id||command.payload.session_id),refetchType:command.action==='delete_session'?'none':'active'}),
     ]);
   }});
 }
