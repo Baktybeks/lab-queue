@@ -292,3 +292,19 @@ test('Automatically admitted off-schedule student stays FIFO after Next and old 
  await db.exec(await readFile(new URL('../supabase/migrations/025_keep_admitted_retries.sql',import.meta.url),'utf8'));s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===guest).status,'waiting');assert.equal(s.entries.find((e:any)=>e.id===main).status,'current');assert.equal(s.results.find((r:any)=>r.id===guest).outcome,'waiting');assert.equal(s.entries.find((e:any)=>e.id===guest).retries,2);
  }finally{await db.close();}
 });
+
+test('Teacher admits completed legacy extras ahead of normal queue with FIFO and no interruption',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ for(const n of [5,6])await db.query('insert into auth.users(id) values($1)',[id(n)]);
+ await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-26',group:'Priority'});const sid=(await snapshot()).session.id;
+ await actor(3);await action('join',sid,{name:'Current',lab:6});const current=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+ const guests:any={};for(const n of [5,6]){await actor(n);await action('join',sid,{name:`Guest ${n}`,lab:1,off_schedule:true});guests[n]=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;}
+ await assert.rejects(action('admit_ready_extra',sid,{entry_id:guests[5]}),/преподавателю/);await actor(2);await assert.rejects(action('admit_ready_extra',sid,{entry_id:guests[5]}),/другого преподавателя/);
+ await actor(1);await action('restore_extra',sid,{entry_id:guests[5]});await action('admit_ready_extra',sid,{entry_id:guests[5]});await assert.rejects(action('admit_ready_extra',sid,{entry_id:guests[5]}),/уже вызван/);await action('admit_ready_extra',sid,{entry_id:guests[6]});
+ let s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,current);let waiting=s.entries.filter((e:any)=>e.status==='waiting').sort((a:any,b:any)=>a.position-b.position);assert.deepEqual(waiting.map((e:any)=>e.id),[guests[5],guests[6]]);assert.equal(waiting[0].extra_count,1);assert.equal(waiting[0].retries,0);assert.equal(waiting[0].carried_extra,true);
+ await action('next',sid,{current_id:current});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,guests[5]);
+ await actor(5);await action('return_extra',sid);s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.mine).status,'extra');assert.equal(s.entries.find((e:any)=>e.mine).extra_count,1);assert.equal(s.entries.find((e:any)=>e.status==='current').id,guests[6]);
+ await actor(1);await action('pass',sid,{current_id:guests[6]});await action('pause_entry',sid,{entry_id:current});await action('admit_ready_extra',sid,{entry_id:guests[5]});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,guests[5]);assert.equal(s.entries.find((e:any)=>e.id===guests[5]).extra_count,1);
+ }finally{await db.close();}
+});
