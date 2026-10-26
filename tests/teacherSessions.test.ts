@@ -278,3 +278,17 @@ test('Teacher restores old extra assignments from any queue status without prior
  await actor(6);await action('join',nextSid,{name:'Student 6',lab:6});e=(await snapshot(nextSid)).entries.find((e:any)=>e.mine);assert.equal(e.status,'extra');assert.equal(e.carried_extra,true);assert.equal(e.extra_count,1);
  }finally{await db.close();}
 });
+
+test('Automatically admitted off-schedule student stays FIFO after Next and old deferred retries are repaired',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ await db.query('insert into auth.users(id) values($1)',[id(5)]);await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-26',group:'Retry'});const sid=(await snapshot()).session.id;
+ await actor(5);await action('join',sid,{name:'Guest',lab:1,off_schedule:true});let s=await snapshot(sid);const guest=s.entries.find((e:any)=>e.mine).id;assert.equal(s.entries.find((e:any)=>e.id===guest).status,'current');
+ await actor(3);await action('join',sid,{name:'Scheduled',lab:6});const main=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+ await actor(1);await action('next',sid,{current_id:guest});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===main).status,'current');assert.equal(s.entries.find((e:any)=>e.id===guest).status,'waiting');assert.equal(s.entries.find((e:any)=>e.id===guest).retries,1);
+ await action('next',sid,{current_id:main});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===guest).status,'current');
+ await action('next',sid,{current_id:guest});s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===guest).status,'waiting');assert.equal(s.entries.find((e:any)=>e.id===guest).retries,2);
+ await db.exec('reset role');await db.query("update queue_private.entries set status='deferred',manually_admitted=false where id=$1",[guest]);await db.query("update queue_private.results set outcome='deferred' where id=$1",[guest]);
+ await db.exec(await readFile(new URL('../supabase/migrations/025_keep_admitted_retries.sql',import.meta.url),'utf8'));s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===guest).status,'waiting');assert.equal(s.entries.find((e:any)=>e.id===main).status,'current');assert.equal(s.results.find((r:any)=>r.id===guest).outcome,'waiting');assert.equal(s.entries.find((e:any)=>e.id===guest).retries,2);
+ }finally{await db.close();}
+});
