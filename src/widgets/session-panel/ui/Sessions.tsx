@@ -57,8 +57,8 @@ export function Sessions({client,userId,state, busy, perform}: {
             </div> : <button className="ghost" disabled={busy} onClick={() => setEnding(true)}>Завершить
                 сессию</button>}</> : <form onSubmit={e => {
                 e.preventDefault();
-                perform('create_session', {date, group: group.trim()});
-            }}><label htmlFor="session-date">Дата сдачи</label><input id="session-date" type="date" required
+                perform('create_session', {date, group: group.trim(),lab:state.lab});
+            }}><p>Сессия откроется с актуальной лабораторной <strong>№ {state.lab}</strong>. Номер можно заранее выбрать в настройках сдачи.</p><label htmlFor="session-date">Дата сдачи</label><input id="session-date" type="date" required
                                                                       value={date}
                                                                       onChange={e => setDate(e.target.value)}/><label
                 htmlFor="session-group">Группа</label><input id="session-group" placeholder="Например, ПИ-Х-ХХ" required

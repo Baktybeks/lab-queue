@@ -330,3 +330,14 @@ test('Light queue excludes archives; on-demand results are scoped to one authori
  await db.exec('set role anon');await assert.rejects(list(),/permission denied/);await assert.rejects(results(a),/permission denied/);await assert.rejects(live(null),/permission denied/);
  }finally{await db.close();}
 });
+
+test('Session opens atomically with the chosen initial lab; invalid choices never open a session',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-28',group:'Lab 8',lab:8});let s=await snapshot();const sid=s.session.id;assert.equal(s.lab,8);assert.equal(s.session.lab,8);
+ await actor(2);await assert.rejects(action('create_session',null,{date:'2026-10-28',group:'Invalid',lab:100}),/Номер лабы/);assert.equal((await snapshot()).session,null);await action('create_session',null,{date:'2026-10-28',group:'Lab 4',lab:4});assert.equal((await snapshot()).lab,4);
+ await actor(3);await action('join',sid,{name:'First student',lab:8});s=await snapshot(sid);assert.equal(s.lab,8);assert.equal(s.entries.find((e:any)=>e.mine).priority,true);
+ await actor(1);await action('set_lab',sid,{lab:7});assert.equal((await snapshot()).lab,7);
+ await actor(4);await action('create_session',null,{date:'2026-10-28',group:'Old client'});assert.equal((await snapshot()).lab,6);
+ }finally{await db.close();}
+});

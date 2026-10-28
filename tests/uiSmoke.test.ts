@@ -13,6 +13,9 @@ test('Reorganized UI renders queue controls, student history, and superadmin for
     const entry={id:'entry-a',name:'Student A',lab:6,status:'current',position:1,priority:false,ready:false};
     const board=renderToStaticMarkup(createElement(QueueBoard,{current:entry,waiting:[],extras:[],paused:[],deferred:[],adminView:true,isAdmin:true,busy:false,perform:async()=>{},restoreExtra:()=>{},readyExtraButton:()=>null}));
     assert.ok(board.includes('Student A'));assert.ok(board.includes('Следующий'));assert.ok(board.includes('Был на допзадании'));
+    const {ActiveLabSettings}=await server.ssrLoadModule('/src/features/set-active-lab/ui/ActiveLabSettings.tsx');
+    const settings=renderToStaticMarkup(createElement(ActiveLabSettings,{sessionId:null,currentLab:7,busy:false,error:'',onSave:async()=>{}}));
+    assert.ok(settings.includes('Сохранить для новой сессии'));assert.ok(!settings.includes('disabled=""'));
     const {Students}=await server.ssrLoadModule('/src/features/manage-students/ui/Students.tsx');
     cache.setQueryData(['students','superadmin'],[{id:'student-a',name:'Student A',login:'student_a'}]);
     const students=renderToStaticMarkup(createElement(QueryClientProvider,{client:cache},createElement(Students,{client:{},userId:'superadmin'})));
