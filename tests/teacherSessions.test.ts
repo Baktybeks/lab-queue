@@ -341,3 +341,23 @@ test('Session opens atomically with the chosen initial lab; invalid choices neve
  await actor(4);await action('create_session',null,{date:'2026-10-28',group:'Old client'});assert.equal((await snapshot()).lab,6);
  }finally{await db.close();}
 });
+
+test('Students joining after an active lab change get the new lab priority',async()=>{
+ const {db,actor,snapshot,action}=await setup();
+ try{
+ await db.query('insert into auth.users(id) values($1),($2)',[id(5),id(6)]);await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-30',group:'Priority change',lab:6});const sid=(await snapshot()).session.id;
+ await actor(3);await action('join',sid,{name:'Current',lab:6});await actor(5);await action('join',sid,{name:'Older work',lab:2});await actor(1);await action('set_lab',sid,{lab:7});
+ await actor(6);await action('join',sid,{name:'New actual work',lab:7});const s=await snapshot(sid);const mine=s.entries.find((e:any)=>e.mine);assert.equal(s.lab,7);assert.equal(mine.priority,true);assert.equal(s.entries.filter((e:any)=>e.status==='waiting').sort((a:any,b:any)=>a.position-b.position)[0].id,mine.id);
+ }finally{await db.close();}
+});
+
+test('Priority repair upgrades legacy creation and restores eligible waiting students without interrupting current',async()=>{
+ const {db,actor,snapshot,action}=await setup();try{
+ await db.query('insert into auth.users(id) values($1),($2)',[id(5),id(6)]);await db.exec('set role authenticated');await actor(1);await action('create_session',null,{date:'2026-10-30',group:'Repair',lab:6});const sid=(await snapshot()).session.id;
+ await actor(3);await action('join',sid,{name:'Current',lab:2});const current=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+ await actor(5);await action('join',sid,{name:'Lab seven',lab:7});const seven=(await snapshot(sid)).entries.find((e:any)=>e.mine).id;
+ await actor(6);await action('join',sid,{name:'Old lab',lab:2});await actor(1);await action('set_lab',sid,{lab:7});assert.equal((await snapshot(sid)).entries.find((e:any)=>e.id===seven).priority,false);
+ await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/029_repair_initial_priority.sql',import.meta.url),'utf8'));let s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.status==='current').id,current);assert.equal(s.entries.find((e:any)=>e.id===seven).priority,true);assert.equal(s.entries.filter((e:any)=>e.status==='waiting').sort((a:any,b:any)=>a.position-b.position)[0].id,seven);
+ await db.exec(await readFile(new URL('../supabase/migrations/029_repair_initial_priority.sql',import.meta.url),'utf8'));s=await snapshot(sid);assert.equal(s.entries.find((e:any)=>e.id===seven).retries,0);
+ }finally{await db.close();}
+});
