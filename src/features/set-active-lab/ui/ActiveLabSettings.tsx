@@ -10,7 +10,7 @@ export function ActiveLabSettings({sessionId,currentLab,busy,error,onSave}:{sess
     <input id="actual" type="number" inputMode="numeric" min="1" max="99" step="1" required value={draft}
       onChange={e=>setDraft(e.target.value)} onBlur={()=>{if(value!==null)setDraft(String(value));}}
       aria-describedby="actual-help actual-status"/>
-    <p className="hint" id="actual-help">Применяется к новым записям. Текущий порядок сохраняется.</p>
+    <p className="hint" id="actual-help">Приоритет ожидающих пересчитывается. Текущий студент продолжает сдачу.</p>
     <div id="actual-status" aria-live="polite">{value===null?<p>Введите целый номер от 1 до 99.</p>:sessionId?<p>Сейчас сохранена лабораторная № {currentLab}.</p>:<p>Для новой сессии выбрана лабораторная № {currentLab}. Сохраните нужный номер, затем создайте сессию — она сразу откроется с ним.</p>}</div>
     {error&&<p className="error" role="alert">{error}</p>}
     <button disabled={busy||value===null}>{busy?'Сохраняем…':sessionId?'Сохранить':'Сохранить для новой сессии'}</button>
